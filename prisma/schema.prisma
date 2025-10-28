@@ -1,0 +1,177 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Sexo {
+  id              Int            @id @default(autoincrement())
+  nombre          String         @unique
+  usuarios        Usuario[]      
+}
+
+model Autor {
+  id              Int            @id @default(autoincrement())
+  nombre          String
+  apellido        String
+  fecha_creado    DateTime       @default(now())
+  estado          Boolean        @default(true)  
+
+  libros          AutorLibro[]
+}
+
+model Editorial {
+  id              Int            @id @default(autoincrement())
+  nombre          String         @unique
+  fecha_creado    DateTime       @default(now())
+  estado          Boolean        @default(true) 
+  
+  libros          Libro[]
+}
+
+model GeneroLiterario {
+  id              Int            @id @default(autoincrement())
+  nombre          String         @unique
+  fecha_creado    DateTime       @default(now())
+  estado          Boolean        @default(true)  
+
+  libros          GeneroLibro[]  
+}
+
+model Libro {
+  id              Int            @id @default(autoincrement())
+  titulo          String
+  anio            Int?
+  precio          Float?
+  fecha_creado    DateTime       @default(now())
+  estado          Boolean        @default(true)  
+
+  editorialId     Int
+  editorial       Editorial      @relation(fields: [editorialId], references: [id])
+  
+  ejemplares      Ejemplar[]
+  comentarios     Comentario[]
+  
+  autores         AutorLibro[]
+  generos         GeneroLibro[] 
+}
+
+enum EstadoEjemplar {
+  disponible
+  prestado
+  perdido
+}
+
+model Ejemplar {
+  id              Int               @id @default(autoincrement())
+  estadolibro     EstadoEjemplar    @default(disponible)
+  fecha_creado    DateTime          @default(now())
+  estado          Boolean           @default(true)  
+
+  libroId         Int
+  libro           Libro             @relation(fields: [libroId], references: [id])
+
+  detallesPrestamo DetallePrestamo[]
+}
+
+model Prestamo {
+  id              Int               @id @default(autoincrement())
+  fecha_prestamo  DateTime
+  fecha_devolucion_esperada DateTime
+  fecha_creado    DateTime          @default(now())
+  
+  usuarioId       Int
+  usuario         Usuario           @relation(fields: [usuarioId], references: [id])
+  
+  deuda           Deuda?
+  detalles        DetallePrestamo[]
+}
+
+model Deuda {
+  id              Int               @id @default(autoincrement())
+  descripcion     String
+  monto           Float
+  fecha_vencimiento DateTime
+  fecha_creado    DateTime          @default(now())
+  
+  prestamoId      Int               @unique
+  prestamo        Prestamo          @relation(fields: [prestamoId], references: [id])
+}
+
+model DetallePrestamo {
+  prestamoId      Int
+  ejemplarId      Int
+  
+  @@id([prestamoId, ejemplarId]) 
+  
+  prestamo        Prestamo          @relation(fields: [prestamoId], references: [id])
+  ejemplar        Ejemplar          @relation(fields: [ejemplarId], references: [id])
+}
+
+model AutorLibro {
+  autorId         Int
+  libroId         Int
+  
+  @@id([autorId, libroId])
+  
+  autor           Autor             @relation(fields: [autorId], references: [id])
+  libro           Libro             @relation(fields: [libroId], references: [id])
+}
+
+model GeneroLibro {
+  generoId        Int
+  libroId         Int
+  
+  @@id([generoId, libroId])
+  
+  genero          GeneroLiterario   @relation(fields: [generoId], references: [id]) 
+  libro           Libro             @relation(fields: [libroId], references: [id])
+}
+
+model Usuario {
+  id              Int               @id @default(autoincrement())
+  nombre          String
+  apellidoPat     String
+  apellidoMat     String
+  correo          String            @unique
+  password        String
+  cargo           String?
+  edad            Int?
+  ci              String?           @unique
+  fecha_creado    DateTime          @default(now())
+
+  estado          Boolean           @default(true)
+
+  paisId          Int?
+  pais            Pais?             @relation(fields: [paisId], references: [id])
+  
+  sexoId          Int?
+  sexo            Sexo?             @relation(fields: [sexoId], references: [id]) 
+  
+  prestamos       Prestamo[]
+  comentarios     Comentario[]
+}
+
+
+model Comentario {
+  id              Int            @id @default(autoincrement())
+  descripcion     String
+  puntuacion      Int?
+  fecha_creado    DateTime       @default(now())
+  estado         Boolean         @default(true)  
+
+  usuarioId       Int
+  usuario         Usuario        @relation(fields: [usuarioId], references: [id])
+
+  libroId         Int
+  libro           Libro          @relation(fields: [libroId], references: [id])
+}
+
+model Pais {
+  id              Int            @id @default(autoincrement())
+  nombre          String         @unique
+  usuarios        Usuario[]
+}
