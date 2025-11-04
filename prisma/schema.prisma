@@ -46,6 +46,7 @@ model Libro {
   titulo          String
   anio            Int?
   precio          Float?
+  imagen          String?
   fecha_creado    DateTime       @default(now())
   estado          Boolean        @default(true)  
 

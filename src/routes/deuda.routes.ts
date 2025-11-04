@@ -1,8 +1,10 @@
 import { Router } from 'express';
-import { obtenerDeudas, crearDeuda } from '../controllers/deuda.controller';
+import { getDeudas, createDeuda, deleteDeuda } from '../controllers/deuda.controller'; // Ajusta la ruta si es necesario
+
 const router = Router();
 
-router.get('/', obtenerDeudas);
-router.post('/', crearDeuda);
+router.get('/', getDeudas);
+router.post('/', createDeuda);
+router.delete('/:id', deleteDeuda);
 
 export default router;

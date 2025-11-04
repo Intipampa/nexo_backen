@@ -1,10 +1,16 @@
-import { Router } from "express";
-import { crearPrestamo, prestarEjemplar, devolverEjemplar } from "../controllers/prestamo.controller";
+import { Router } from 'express';
+import {
+  getPrestamos,
+  createPrestamo,
+  updatePrestamo,
+  deletePrestamo,
+} from '../controllers/prestamo.controller';
 
 const router = Router();
 
-router.post("/", crearPrestamo);               // Crea el préstamo
-router.post("/agregar-ejemplar", prestarEjemplar);  // Añade ejemplar
-router.patch("/devolver-ejemplar", devolverEjemplar); // Devuelve ejemplar
+router.get('/', getPrestamos);
+router.post('/', createPrestamo);
+router.put('/:id', updatePrestamo);
+router.delete('/:id', deletePrestamo);
 
 export default router;

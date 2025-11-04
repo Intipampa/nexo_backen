@@ -4,15 +4,13 @@ import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 import authRoutes from './routes/auth.routes';
 import autorRoutes from './routes/autor.routes';
-import editorialRoutes from './routes/editorial.routes';
-import generoRoutes from './routes/genero.routes';
 import libroRoutes from './routes/libro.routes';
 import ejemplarRoutes from './routes/ejemplar.routes';
 import prestamoRoutes from './routes/prestamo.routes';
 import deudaRoutes from './routes/deuda.routes';
 import detallePrestamoRoutes from './routes/detallePrestamo.routes';
 import comentarioRoutes from './routes/comentario.routes';
-import { getPaises, getSexos } from './controllers/catalog.controller';
+import { getPaises, getSexos, getGenerosLiterarios, getEditoriales} from './controllers/catalog.controller';
 import usuarioRoutes from './routes/usuario.routes';
 
 dotenv.config();
@@ -28,11 +26,11 @@ app.get('/', (_, res) => {
 
 app.get('/api/paises', getPaises);
 app.get('/api/sexos', getSexos);
+app.get('/api/generosliterarios', getGenerosLiterarios); 
+app.get('/api/editoriales', getEditoriales);
 app.use('/api/usuarios', usuarioRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/autores', autorRoutes);
-app.use('/api/editoriales', editorialRoutes);
-app.use('/api/generos', generoRoutes);
 app.use('/api/libros', libroRoutes);
 app.use('/api/ejemplares', ejemplarRoutes);
 app.use('/api/prestamos', prestamoRoutes);

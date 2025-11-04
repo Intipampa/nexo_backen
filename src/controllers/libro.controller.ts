@@ -1,120 +1,118 @@
 import { Request, Response } from 'express';
-import prisma from '../prisma/client';
+import { PrismaClient } from '@prisma/client';
 
-// Obtener todos los libros
+const prisma = new PrismaClient();
+
 export const obtenerLibros = async (req: Request, res: Response) => {
-  const { incluirInactivos } = req.query;
+  
   try {
     const libros = await prisma.libro.findMany({
-      where: incluirInactivos ? {} : { estado: true },
+  
       include: {
         editorial: true,
-        autores: { include: { autor: true } },
-        generos: { include: { genero: true } },
-        ejemplares: true
-      },
-      orderBy: { id: 'asc' }
-    });
-    res.json(libros);
-  } catch (error) {
-    res.status(500).json({ error: 'Error al obtener libros' });
-  }
-};
-
-// Obtener libro por ID
-export const obtenerLibroPorId = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  try {
-    const libro = await prisma.libro.findUnique({
-      where: { id: Number(id) },
-      include: {
-        editorial: true,
-        autores: { include: { autor: true } },
-        generos: { include: { genero: true } },
-        ejemplares: true
-      }
-    });
-    if (!libro) return res.status(404).json({ error: 'Libro no encontrado' });
-    res.json(libro);
-  } catch (error) {
-    res.status(500).json({ error: 'Error al obtener libro' });
-  }
-};
-
-// Crear libro con autores y géneros
-export const crearLibro = async (req: Request, res: Response) => {
-  const { titulo, anio, precio, editorialId, autores = [], generos = [] } = req.body;
-
-  try {
-    const nuevo = await prisma.libro.create({
-      data: {
-        titulo,
-        anio: anio ? Number(anio) : null,
-        precio: precio ? Number(precio) : null,
-        editorialId: Number(editorialId),
         autores: {
-          create: autores.map((autorId: number) => ({ autorId }))
+          include: { autor: true },
         },
         generos: {
-          create: generos.map((generoId: number) => ({ generoId }))
-        }
-      }
+          include: { genero: true },
+        },
+      },
+      orderBy: { id: 'asc' },
     });
 
-    res.status(201).json(nuevo);
+    const librosConRelaciones = libros.map((libro) => ({
+      id: libro.id,
+      titulo: libro.titulo,
+      anio: libro.anio,
+      precio: libro.precio,
+      imagen: libro.imagen,
+      estado: libro.estado,
+      editorial: libro.editorial.nombre,
+      autores: libro.autores.map((a) => `${a.autor.nombre} ${a.autor.apellido}`),
+      generos: libro.generos.map((g) => g.genero.nombre),
+    }));
+
+    res.json(librosConRelaciones);
   } catch (error) {
-    res.status(500).json({ error: 'Error al crear libro', detalle: error });
+    res.status(500).json({ mensaje: 'Error al obtener los libros', error });
   }
 };
 
-// Editar libro y actualizar relaciones
-export const editarLibro = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { titulo, anio, precio, editorialId, autores = [], generos = [] } = req.body;
+export const crearLibro = async (req: Request, res: Response) => {
 
   try {
-    const actualizado = await prisma.libro.update({
+    const { titulo, anio, precio, imagen, editorialId, autoresIds, generosIds } = req.body;
+
+    const nuevoLibro = await prisma.libro.create({
+      data: {
+        titulo,
+        anio,
+        precio,
+        imagen,
+        editorialId,
+        autores: {
+          create: autoresIds.map((autorId: number) => ({ autorId })),
+        },
+        generos: {
+          create: generosIds.map((generoId: number) => ({ generoId })),
+        },
+      },
+    });
+
+    res.status(201).json(nuevoLibro);
+  } catch (error) {
+    res.status(500).json({ mensaje: 'Error al crear el libro', error });
+  }
+};
+
+export const editarLibro = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { titulo, anio, precio, imagen, editorialId, autoresIds, generosIds, estado } = req.body;
+
+    await prisma.autorLibro.deleteMany({ where: { libroId: Number(id) } });
+    await prisma.generoLibro.deleteMany({ where: { libroId: Number(id) } });
+
+    const libroActualizado = await prisma.libro.update({
       where: { id: Number(id) },
       data: {
         titulo,
         anio,
         precio,
+        imagen,
         editorialId,
+        estado,
         autores: {
-          deleteMany: {},
-          create: autores.map((autorId: number) => ({ autorId }))
+          create: autoresIds.map((autorId: number) => ({ autorId })),
         },
         generos: {
-          deleteMany: {},
-          create: generos.map((generoId: number) => ({ generoId }))
-        }
-      }
+          create: generosIds.map((generoId: number) => ({ generoId })),
+        },
+      },
     });
 
-    res.json(actualizado);
+    res.json(libroActualizado);
   } catch (error) {
-    res.status(500).json({ error: 'Error al editar libro' });
+    res.status(500).json({ mensaje: 'Error al editar el libro', error });
   }
 };
 
-// Deshabilitar libro
-export const deshabilitarLibro = async (req: Request, res: Response) => {
-  const { id } = req.params;
+export const cambiarEstadoLibro = async (req: Request, res: Response) => {
   try {
-    await prisma.libro.update({ where: { id: Number(id) }, data: { estado: false } });
-    res.json({ mensaje: 'Libro deshabilitado' });
-  } catch (error) {
-    res.status(500).json({ error: 'Error al deshabilitar libro' });
-  }
-};
+    const { id } = req.params;
+    const libro = await prisma.libro.findUnique({ where: { id: Number(id) } });
 
-// Habilitar libro
-export const habilitarLibro = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  try {
-    await prisma.libro.update({ where: { id: Number(id) }, data: { estado: true } });
-    res.json({ mensaje: 'Libro habilitado' });
+    if (!libro) {
+      return res.status(404).json({ mensaje: 'Libro no encontrado' });
+    }
+
+    const libroActualizado = await prisma.libro.update({
+      where: { id: Number(id) },
+      data: { estado: !libro.estado },
+    });
+
+    res.json(libroActualizado);
   } catch (error) {
-    res.status(500).json({ error: 'Error al habilitar libro' });
+    res.status(500).json({ mensaje: 'Error al cambiar el estado del libro', error });
   }
 };

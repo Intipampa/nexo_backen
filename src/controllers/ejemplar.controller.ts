@@ -1,87 +1,91 @@
-import { Request, Response } from "express";
-import prisma from "../prisma/client";
+import { PrismaClient } from '@prisma/client';
+import { Request, Response } from 'express';
 
-// Obtener todos los ejemplares
-export const obtenerEjemplares = async (req: Request, res: Response) => {
+const prisma = new PrismaClient();
+
+// 🟢 Obtener todos los ejemplares
+export const getEjemplares = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { incluirInactivos } = req.query;
     const ejemplares = await prisma.ejemplar.findMany({
-      where: incluirInactivos ? {} : { estado: true },
-      include: { libro: true },
-      orderBy: { id: "asc" },
+      include: {
+        libro: true,
+      },
+      orderBy: {
+        id: 'desc',
+      },
     });
     res.json(ejemplares);
   } catch (error) {
-    res.status(500).json({ error: "Error al obtener ejemplares" });
+    console.error('Error al obtener ejemplares:', error);
+    res.status(500).json({ error: 'Error al obtener ejemplares' });
   }
 };
 
-// Obtener ejemplar por ID
-export const obtenerEjemplarPorId = async (req: Request, res: Response) => {
-  const { id } = req.params;
+// 🟢 Crear un nuevo ejemplar
+export const createEjemplar = async (req: Request, res: Response): Promise<void> => {
   try {
-    const ejemplar = await prisma.ejemplar.findUnique({
-      where: { id: Number(id) },
-      include: { libro: true },
+    const { libroId, estadolibro } = req.body;
+
+    if (!libroId) {
+      res.status(400).json({ error: 'Debe especificar un libro' });
+      return;
+    }
+
+    const nuevoEjemplar = await prisma.ejemplar.create({
+      data: {
+        libroId,
+        estadolibro: estadolibro || 'disponible',
+      },
+      include: {
+        libro: true,
+      },
     });
-    if (!ejemplar) return res.status(404).json({ error: "Ejemplar no encontrado" });
+
+    res.json(nuevoEjemplar);
+  } catch (error) {
+    console.error('Error al crear ejemplar:', error);
+    res.status(500).json({ error: 'Error al crear ejemplar' });
+  }
+};
+
+// 🟢 Actualizar ejemplar
+export const updateEjemplar = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { libroId, estadolibro, estado } = req.body;
+
+    const ejemplar = await prisma.ejemplar.update({
+      where: { id: Number(id) },
+      data: {
+        libroId,
+        estadolibro,
+        estado,
+      },
+      include: {
+        libro: true,
+      },
+    });
+
     res.json(ejemplar);
   } catch (error) {
-    res.status(500).json({ error: "Error al obtener ejemplar" });
+    console.error('Error al actualizar ejemplar:', error);
+    res.status(500).json({ error: 'Error al actualizar ejemplar' });
   }
 };
 
-// Crear ejemplar
-export const crearEjemplar = async (req: Request, res: Response) => {
-  const { libroId, estadolibro } = req.body;
+// 🟢 Eliminar ejemplar (borrado lógico)
+export const deleteEjemplar = async (req: Request, res: Response): Promise<void> => {
   try {
-    const nuevo = await prisma.ejemplar.create({
-      data: { libroId, estadolibro },
-    });
-    res.status(201).json(nuevo);
-  } catch (error) {
-    res.status(500).json({ error: "Error al crear ejemplar" });
-  }
-};
+    const { id } = req.params;
 
-// Editar ejemplar
-export const editarEjemplar = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  try {
-    const actualizado = await prisma.ejemplar.update({
-      where: { id: Number(id) },
-      data: req.body,
-    });
-    res.json(actualizado);
-  } catch (error) {
-    res.status(500).json({ error: "Error al editar ejemplar" });
-  }
-};
-
-// Deshabilitar ejemplar
-export const deshabilitarEjemplar = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  try {
-    await prisma.ejemplar.update({
+    const ejemplar = await prisma.ejemplar.update({
       where: { id: Number(id) },
       data: { estado: false },
     });
-    res.json({ mensaje: "Ejemplar deshabilitado" });
-  } catch (error) {
-    res.status(500).json({ error: "Error al deshabilitar ejemplar" });
-  }
-};
 
-// Habilitar ejemplar
-export const habilitarEjemplar = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  try {
-    await prisma.ejemplar.update({
-      where: { id: Number(id) },
-      data: { estado: true },
-    });
-    res.json({ mensaje: "Ejemplar habilitado" });
+    res.json({ message: 'Ejemplar eliminado correctamente', ejemplar });
   } catch (error) {
-    res.status(500).json({ error: "Error al habilitar ejemplar" });
+    console.error('Error al eliminar ejemplar:', error);
+    res.status(500).json({ error: 'Error al eliminar ejemplar' });
   }
 };
